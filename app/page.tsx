@@ -53,7 +53,6 @@ export default function CRUDPage() {
     try {
       const res = await fetch(PRODUCTS_API, { cache: "no-store" });
       const resData = await res.json();
-      // Strapi v5 trả về mảng trực tiếp nằm trong resData.data
       setProducts(resData.data || []);
     } catch (error) {
       console.error("Lỗi lấy dữ liệu trận đấu:", error);
@@ -78,10 +77,18 @@ export default function CRUDPage() {
     }
   };
 
-  // Chạy ngay khi tải trang
+  // Chạy ngay khi tải trang và thiết lập tự động cập nhật dữ liệu từ điện thoại
   useEffect(() => {
     fetchProducts();
     fetchFormOptions();
+
+    // 🔄 Tự động đồng bộ: Cứ mỗi 5 giây hệ thống âm thầm gọi API lấy dữ liệu mới
+    // Giúp bạn nhập trên điện thoại thì máy tính tự động cập nhật ngay lập tức
+    const interval = setInterval(() => {
+      fetchProducts();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Xóa trắng form (Reset)
@@ -113,14 +120,12 @@ export default function CRUDPage() {
 
     try {
       if (editingId) {
-        // Cập nhật (PUT) dựa trên documentId của Strapi v5
         await fetch(`${PRODUCTS_API}/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        // Tạo mới (POST)
         await fetch(PRODUCTS_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -165,9 +170,10 @@ export default function CRUDPage() {
           MANAGER
         </h1>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* CỘT 1: FORM NHẬP LIỆU */}
-          <div className="w-full lg:w-5/12 bg-zinc-800 p-6 rounded-2xl border border-zinc-700 h-fit sticky top-6 shadow-xl">
+        {/* 🌟 ĐÃ THAY ĐỔI: Sử dụng Grid chia 3 cột cố định từ màn hình md (máy tính/tablet) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+          {/* CỘT 1: FORM NHẬP LIỆU (Chiếm 5 phần) */}
+          <div className="col-span-1 md:col-span-5 bg-zinc-800 p-6 rounded-2xl border border-zinc-700 md:sticky md:top-6 shadow-xl">
             <h2 className="text-xl font-semibold mb-6 text-emerald-400 border-b border-zinc-700 pb-2">
               {editingId ? "Update match" : "Bet form"}
             </h2>
@@ -295,8 +301,8 @@ export default function CRUDPage() {
             </form>
           </div>
 
-          {/* CỘT 2: DANH SÁCH HIỂN THỊ */}
-          <div className="w-full lg:w-7/12 space-y-4">
+          {/* CỘT 2: DANH SÁCH HIỂN THỊ (Chiếm 7 phần) */}
+          <div className="col-span-1 md:col-span-7 space-y-4">
             <div className="flex justify-between items-center border-b border-zinc-700 pb-2">
               <h2 className="text-xl font-semibold text-zinc-300">
                 match now ({products.length})
