@@ -27,7 +27,7 @@ const STRAPI_BASE_URL =
   "https://my-strapi-backend-484u.onrender.com";
 
 const PRODUCTS_API = `${STRAPI_BASE_URL}/api/products`;
-const TEAMS_API = `${STRAPI_BASE_URL}/api/teams`;
+const TEAMS_API = `${STRAPI_BASE_URL}/api/teams?pagination[limit]=100`;
 const BET_TYPES_API = `${STRAPI_BASE_URL}/api/bet-types`;
 
 export default function CRUDPage() {
