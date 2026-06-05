@@ -1,8 +1,9 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useState, useEffect } from "react";
 
-// 1. Định nghĩa các kiểu dữ liệu (Interface)
+// 1. Định nghĩa các kiểu dữ liệu (Interface) chuẩn Strapi v5
 interface ProductBet {
   documentId: string;
   id: number;
@@ -16,21 +17,26 @@ interface ProductBet {
 
 interface StrapiData {
   id: number;
+  documentId: string;
   name: string;
 }
 
-// Các đường dẫn API đến Strapi v5
-const PRODUCTS_API = "http://localhost:1337/api/products";
-const TEAMS_API = "http://localhost:1337/api/teams";
-const BET_TYPES_API = "http://localhost:1337/api/bet-types";
+// Tự động nhận diện URL: Nếu chạy local thì dùng localhost, nếu chạy production thì dùng Render
+const STRAPI_BASE_URL =
+  process.env.NEXT_PUBLIC_STRAPI_API_URL ||
+  "https://my-strapi-backend-484u.onrender.com";
+
+const PRODUCTS_API = `${STRAPI_BASE_URL}/api/products`;
+const TEAMS_API = `${STRAPI_BASE_URL}/api/teams`;
+const BET_TYPES_API = `${STRAPI_BASE_URL}/api/bet-types`;
 
 export default function CRUDPage() {
   const [products, setProducts] = useState<ProductBet[]>([]);
-  
+
   // Các mảng chứa dữ liệu ĐỘNG gọi từ Strapi về đổ vào các thẻ <select>
   const [dynamicTeams, setDynamicTeams] = useState<StrapiData[]>([]);
   const [dynamicBets, setDynamicBets] = useState<StrapiData[]>([]);
-  
+
   // State quản lý dữ liệu Form nhập liệu
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -38,16 +44,17 @@ export default function CRUDPage() {
   const [team2, setTeam2] = useState("");
   const [bet, setBet] = useState("");
   const [notes, setNotes] = useState("");
-  
-  // State phục vụ cho chức năng Sửa (Update)
+
+  // State phục vụ cho chức năng Sửa (Update) bằng documentId của Strapi v5
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Hàm lấy danh sách Trận đấu/Sản phẩm
   const fetchProducts = async () => {
     try {
-      const res = await fetch(PRODUCTS_API);
-      const data = await res.json();
-      setProducts(data.data || []);
+      const res = await fetch(PRODUCTS_API, { cache: "no-store" });
+      const resData = await res.json();
+      // Strapi v5 trả về mảng trực tiếp nằm trong resData.data
+      setProducts(resData.data || []);
     } catch (error) {
       console.error("Lỗi lấy dữ liệu trận đấu:", error);
     }
@@ -56,16 +63,14 @@ export default function CRUDPage() {
   // Hàm lấy danh sách các Đội bóng và các Loại kèo từ Strapi
   const fetchFormOptions = async () => {
     try {
-      // Gọi song song cả 2 API để tối ưu tốc độ load trang
       const [teamsRes, betsRes] = await Promise.all([
-        fetch(TEAMS_API),
-        fetch(BET_TYPES_API)
+        fetch(TEAMS_API, { cache: "no-store" }),
+        fetch(BET_TYPES_API, { cache: "no-store" }),
       ]);
 
       const teamsData = await teamsRes.json();
       const betsData = await betsRes.json();
 
-      // Strapi trả về mảng data, ta map lấy id và thuộc tính name
       setDynamicTeams(teamsData.data || []);
       setDynamicBets(betsData.data || []);
     } catch (error) {
@@ -103,12 +108,12 @@ export default function CRUDPage() {
     }
 
     const payload = {
-      data: { name, price: Number(price), team1, team2, bet, notes, },
+      data: { name, price: Number(price), team1, team2, bet, notes },
     };
 
     try {
       if (editingId) {
-        // Cập nhật (PUT)
+        // Cập nhật (PUT) dựa trên documentId của Strapi v5
         await fetch(`${PRODUCTS_API}/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -141,7 +146,7 @@ export default function CRUDPage() {
     setNotes(product.notes || "");
   };
 
-  // Chức năng Xóa
+  // Chức năng Xóa dựa trên documentId của Strapi v5
   const handleDelete = async (documentId: string) => {
     if (!confirm("Bạn có chắc chắn muốn xóa mục này?")) return;
 
@@ -161,33 +166,36 @@ export default function CRUDPage() {
         </h1>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          
           {/* CỘT 1: FORM NHẬP LIỆU */}
           <div className="w-full lg:w-5/12 bg-zinc-800 p-6 rounded-2xl border border-zinc-700 h-fit sticky top-6 shadow-xl">
             <h2 className="text-xl font-semibold mb-6 text-emerald-400 border-b border-zinc-700 pb-2">
-              {editingId ? "update" : "Bet form"}
+              {editingId ? "Update match" : "Bet form"}
             </h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Name user</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
+                  Name user
+                </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-600 rounded-none p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
+                  className="w-full bg-zinc-900 border border-zinc-600 p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
                   placeholder="Enter the name"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* SELECT CHỌN ĐỘI 1 LẤY ĐỒNG TỪ STRAPI */}
+                {/* SELECT CHỌN ĐỘI A */}
                 <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Team A</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
+                    Team A
+                  </label>
                   <select
                     value={team1}
                     onChange={(e) => setTeam1(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-600 rounded-none p-3 pr-20! text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
+                    className="w-full bg-zinc-900 border border-zinc-600 p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
                   >
                     <option value="">team a</option>
                     {dynamicTeams.map((team) => (
@@ -198,13 +206,15 @@ export default function CRUDPage() {
                   </select>
                 </div>
 
-                {/* SELECT CHỌN ĐỘI 2 LẤY ĐỒNG TỪ STRAPI */}
+                {/* SELECT CHỌN ĐỘI B */}
                 <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Team B</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
+                    Team B
+                  </label>
                   <select
                     value={team2}
                     onChange={(e) => setTeam2(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-600 rounded-none p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
+                    className="w-full bg-zinc-900 border border-zinc-600 p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
                   >
                     <option value="">team b</option>
                     {dynamicTeams.map((team) => (
@@ -216,13 +226,15 @@ export default function CRUDPage() {
                 </div>
               </div>
 
-              {/* SELECT CHỌN KÈO LẤY ĐỒNG TỪ STRAPI */}
+              {/* SELECT CHỌN KÈO */}
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">bet</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
+                  bet
+                </label>
                 <select
                   value={bet}
                   onChange={(e) => setBet(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-600 rounded-none p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
+                  className="w-full bg-zinc-900 border border-zinc-600 p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
                 >
                   <option value="">set bet</option>
                   {dynamicBets.map((b) => (
@@ -234,23 +246,27 @@ export default function CRUDPage() {
               </div>
 
               <div>
-  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">note</label>
-  <textarea
-    value={notes}
-    onChange={(e) => setNotes(e.target.value)}
-    rows={3} // Độ cao hiển thị tương đương 3 dòng chữ
-    className="w-full bg-zinc-900 border border-zinc-600 rounded-none p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all resize-none"
-    placeholder="vd: đặt Bồ, Bồ chấp 1.5 "
-  />
-</div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
+                  note
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className="w-full bg-zinc-900 border border-zinc-600 p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all resize-none"
+                  placeholder="vd: đặt Bồ, Bồ chấp 1.5 "
+                />
+              </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">money</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
+                  money
+                </label>
                 <input
                   type="number"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-600 rounded-none p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
+                  className="w-full bg-zinc-900 border border-zinc-600 p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all"
                   placeholder="Enter the amount"
                 />
               </div>
@@ -258,17 +274,19 @@ export default function CRUDPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className={`flex-1 text-zinc-900 text-sm font-bold py-3 rounded-none transition-all shadow-md transform active:scale-95 ${
-                    editingId ? "bg-amber-400 hover:bg-amber-500" : "bg-emerald-400 hover:bg-emerald-500"
+                  className={`flex-1 text-zinc-900 text-sm font-bold py-3 transition-all shadow-md transform active:scale-95 ${
+                    editingId
+                      ? "bg-amber-400 hover:bg-amber-500"
+                      : "bg-emerald-400 hover:bg-emerald-500"
                   }`}
                 >
-                  {editingId ? "update..." : "comfirm"}
+                  {editingId ? "update..." : "confirm"}
                 </button>
                 {editingId && (
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="px-5 bg-zinc-700 text-zinc-300 text-sm font-medium py-3 rounded-none hover:bg-zinc-600 transition-colors"
+                    className="px-5 bg-zinc-700 text-zinc-300 text-sm font-medium py-3 hover:bg-zinc-600 transition-colors"
                   >
                     Hủy
                   </button>
@@ -280,9 +298,11 @@ export default function CRUDPage() {
           {/* CỘT 2: DANH SÁCH HIỂN THỊ */}
           <div className="w-full lg:w-7/12 space-y-4">
             <div className="flex justify-between items-center border-b border-zinc-700 pb-2">
-              <h2 className="text-xl font-semibold text-zinc-300">match now ({products.length})</h2>
+              <h2 className="text-xl font-semibold text-zinc-300">
+                match now ({products.length})
+              </h2>
             </div>
-            
+
             {products.length === 0 ? (
               <div className="text-zinc-500 bg-zinc-800/50 p-12 rounded-none border border-dashed border-zinc-700 text-center text-sm">
                 no data
@@ -290,48 +310,75 @@ export default function CRUDPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {products.map((product) => (
-                  <div key={product.id} className="bg-zinc-800 p-5 rounded-none border border-zinc-700/60 shadow-sm flex flex-col justify-between hover:border-zinc-500 transition-all">
+                  <div
+                    key={product.id}
+                    className="bg-zinc-800 p-5 rounded-none border border-zinc-700/60 shadow-sm flex flex-col justify-between hover:border-zinc-500 transition-all"
+                  >
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-3">
-                        <span className="text-xs font-mono text-zinc-500">ID: {product.id}</span>
+                        <span className="text-xs font-mono text-zinc-500">
+                          ID: {product.id}
+                        </span>
                         <span className="bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-lg">
                           ${product.price}
                         </span>
                       </div>
 
-                      <h3 className="font-bold text-zinc-100 text-base mb-3">{product.name}</h3>
+                      <h3 className="font-bold text-zinc-100 text-base mb-3">
+                        {product.name}
+                      </h3>
 
                       <div className="space-y-1.5 bg-zinc-900/60 p-3 rounded-xl border border-zinc-700/40 text-xs mb-4">
                         <p className="text-zinc-400 flex justify-between">
-                          <span>Đội 1:</span> <span className="font-semibold text-zinc-200">{product.team1}</span>
+                          <span>Đội 1:</span>{" "}
+                          <span className="font-semibold text-zinc-200">
+                            {product.team1}
+                          </span>
                         </p>
                         <p className="text-zinc-400 flex justify-between">
-                          <span>Đội 2:</span> <span className="font-semibold text-zinc-200">{product.team2}</span>
+                          <span>Đội 2:</span>{" "}
+                          <span className="font-semibold text-zinc-200">
+                            {product.team2}
+                          </span>
                         </p>
                         <p className="text-zinc-400 flex justify-between border-t border-zinc-800 pt-1.5 mt-1.5">
-                          <span>Loại kèo:</span> <span className="font-semibold text-blue-400">{product.bet}</span>
+                          <span>Loại kèo:</span>{" "}
+                          <span className="font-semibold text-blue-400">
+                            {product.bet}
+                          </span>
                         </p>
-{product.notes && (
-  <div className="text-zinc-400 flex justify-between items-start border-t border-zinc-800/60 pt-1.5 mt-1.5">
-    <span className="shrink-0 text-zinc-500">Ghi chú:</span>
-    <span className="font-medium text-zinc-300 italic max-w-[70%] text-right break-words">
-      {product.notes}
-    </span>
-  </div>
-)}
+                        {product.notes && (
+                          <div className="text-zinc-400 flex justify-between items-start border-t border-zinc-800/60 pt-1.5 mt-1.5">
+                            <span className="shrink-0 text-zinc-500">
+                              Ghi chú:
+                            </span>
+                            <span className="font-medium text-zinc-300 italic max-w-[70%] text-right break-words">
+                              {product.notes}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex gap-2 border-t pt-3 border-zinc-700/60">
-                      <button onClick={() => handleEdit(product)} className="flex-1 text-center text-xs font-medium text-amber-400 bg-amber-500/10 py-2 rounded-xl hover:bg-amber-500/20 transition-all border border-amber-500/20">Sửa</button>
-                      <button onClick={() => handleDelete(product.documentId)} className="flex-1 text-center text-xs font-medium text-red-400 bg-red-500/10 py-2 rounded-xl hover:bg-red-500/20 transition-all border border-red-500/20">Xóa</button>
+                      <button
+                        onClick={() => handleEdit(product)}
+                        className="flex-1 text-center text-xs font-medium text-amber-400 bg-amber-500/10 py-2 rounded-xl hover:bg-amber-500/20 transition-all border border-amber-500/20"
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.documentId)}
+                        className="flex-1 text-center text-xs font-medium text-red-400 bg-red-500/10 py-2 rounded-xl hover:bg-red-500/20 transition-all border border-red-500/20"
+                      >
+                        Xóa
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
         </div>
       </div>
     </div>
