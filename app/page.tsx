@@ -173,7 +173,7 @@ export default function CRUDPage() {
         {/* 🌟 ĐÃ THAY ĐỔI: Sử dụng Grid chia 3 cột cố định từ màn hình md (máy tính/tablet) */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
           {/* CỘT 1: FORM NHẬP LIỆU (Chiếm 5 phần) */}
-          <div className="col-span-1 md:col-span-5 bg-zinc-800 p-6 rounded-2xl border border-zinc-700 md:sticky md:top-6 shadow-xl">
+          <div className="col-span-1 md:col-span-5 bg-zinc-800 p-6 rounded-none border border-zinc-700 md:sticky md:top-6 shadow-xl">
             <h2 className="text-xl font-semibold mb-6 text-emerald-400 border-b border-zinc-700 pb-2">
               {editingId ? "Update match" : "Bet form"}
             </h2>
